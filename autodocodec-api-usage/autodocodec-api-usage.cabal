@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.38.3.
+-- This file has been generated from package.yaml by hpack version 0.39.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -528,6 +528,22 @@ library
     , text
     , unordered-containers
     , yaml
+  default-language: Haskell2010
+
+executable autodocodec-api-usage
+  main-is: Main.hs
+  other-modules:
+      Paths_autodocodec_api_usage
+  hs-source-dirs:
+      app
+  build-depends:
+      aeson
+    , aeson-pretty
+    , autodocodec >=0.2.0.0
+    , autodocodec-openapi3
+    , base >=4.7 && <5
+    , bytestring
+    , openapi3
   default-language: Haskell2010
 
 test-suite autodocodec-api-usage-test

@@ -40,6 +40,16 @@ library:
   - unordered-containers
   - yaml
 
+executable:
+  main: Main.hs
+  source-dirs: app
+  dependencies:
+  - aeson
+  - aeson-pretty
+  - autodocodec >=0.2.0.0
+  - autodocodec-openapi3
+  - bytestring
+  - openapi3
 
 tests:
   autodocodec-api-usage-test:

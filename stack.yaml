@@ -53,5 +53,5 @@ ghc-options:
 system-ghc: true
 nix:
   enable: false
-with-hpack: hpack
+#with-hpack: hpack
 
