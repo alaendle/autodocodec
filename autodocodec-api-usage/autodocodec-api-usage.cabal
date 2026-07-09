@@ -544,6 +544,7 @@ executable autodocodec-api-usage
     , base >=4.7 && <5
     , bytestring
     , openapi3
+    , text
   default-language: Haskell2010
 
 test-suite autodocodec-api-usage-test

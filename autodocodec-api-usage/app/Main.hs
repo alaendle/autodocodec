@@ -1,23 +1,21 @@
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia        #-}
+{-# LANGUAGE EmptyCase          #-}
 {-# LANGUAGE KindSignatures     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE RankNTypes         #-}
+{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE TypeFamilies       #-}
 
 module Main where
 
-import           GHC.TypeNats (Nat)
-import Autodocodec (HasCodec)
-import Autodocodec.Class (HasCodec(codec))
-import Autodocodec.Codec
-import Autodocodec
-import Autodocodec.OpenAPI
-import Data.Data
-import Data.OpenApi.Declare
-import Data.OpenApi
-import Data.Aeson (toJSON)
-import Data.Aeson.Encode.Pretty 
+import           Autodocodec
+import           Data.Aeson                 hiding (object, (.=))
+import           Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy.Char8 as B
+import           Data.Void                  (Void)
+import           GHC.TypeNats               (Nat)
 
 -- case study, what is needed to extend autodocodec with TtG
 
@@ -27,24 +25,75 @@ import qualified Data.ByteString.Lazy.Char8 as B
 newtype BoundedString (lo :: Nat) (hi :: Nat) = BoundedString { unBoundedString :: String }
   deriving stock (Show, Eq)
 
-instance HasCodec (BoundedString lo hi) where
-  codec = dimapCodec BoundedString unBoundedString codec
+--instance HasCodec (BoundedString lo hi) where
+--  codec = undefined -- obviously this couldn't work since if this would be possible we won't need an extension at all.
 
-data Business 
+toJSONExt :: ToJSONExt MyExt
+toJSONExt =
+  ToJSONExt
+    (\_ t -> toJSON ("Bounded: " <> t))
+    (\_ t -> case t of {})
+
+data Business
   = Business
-  { businessName :: BoundedString 1 100
+  { businessName    :: BoundedString 1 100
   , businessAddress :: String
   , businessRevenue :: Integer
   } deriving stock (Show, Eq)
+--    deriving (FromJSON, ToJSON) via (Autodocodec Business)
 
-instance HasCodec Business where
-  codec = object "Business" $
-    Business
-      <$> requiredField "name" "The name of the business" .= businessName
-      <*> requiredField "address" "The address of the business" .= businessAddress
-      <*> requiredField "revenue" "The revenue of the business" .= businessRevenue
+--instance HasCodec Business where
+--  codec = object "Business" $
+--    Business
+--      <$> requiredField "name" "The name of the business" .= businessName
+--      <*> requiredField "address" "The address of the business" .= businessAddress
+--      <*> requiredFieldWith "revenue" integerCodec "The revenue of the business" .= businessRevenue
+
+-- 2. Lets build our "own" tree
+
+data MyExt  -- tree index
+
+type instance XXValCodec MyExt = BoundedStringCodec
+type instance XVal MyExt = String
+
+type instance XObj MyExt = Void
+
+type instance XObjectOfCodec MyExt = NoExtField
+type instance XBimapCodec MyExt = NoExtField
+type instance XRequiredKeyCodec MyExt = NoExtField
+type instance XIntegerCodec MyExt = NoExtField
+type instance XApCodec MyExt = NoExtField
+type instance XPureCodec MyExt = NoExtField
+type instance XReferenceCodec MyExt = NoExtField
+type instance XOptionalKeyCodec MyExt = NoExtField
+type instance XOptionalKeyWithDefaultCodec MyExt = NoExtField
+type instance XOptionalKeyWithOmittedDefaultCodec MyExt = NoExtField
+type instance XDiscriminatedUnionCodec MyExt = NoExtField
+type instance XEitherCodec MyExt = NoExtField
+type instance XCommentCodec MyExt = NoExtField
+type instance XArrayOfCodec MyExt = NoExtField
+type instance XMapCodec MyExt = NoExtField
+type instance XHashMapCodec MyExt = NoExtField
+type instance XEqCodec MyExt = NoExtField
+type instance XStringCodec MyExt = NoExtField
+type instance XBoolCodec MyExt = NoExtField
+type instance XNullCodec MyExt = NoExtField
+
+data BoundedStringCodec = BoundedStringCodec Nat Nat
+
+boundedStringCodec :: Nat -> Nat -> JSONCodecAt MyExt (BoundedString lo hi)
+boundedStringCodec lo hi = XValCodec $ BoundedStringCodec lo hi
+
+businessCodec :: JSONCodecAt MyExt Business
+businessCodec = object "Business" $
+  Business
+    <$> requiredFieldWith "name" (boundedStringCodec 1 100) "The name of the business" .= businessName
+    <*> requiredFieldWith "address" stringCodec "The address of the business" .= businessAddress
+    <*> requiredFieldWith "revenue" integerCodec "The revenue of the business" .= businessRevenue
 
 main :: IO ()
 main = do
-    let (_, (NamedSchema _ s)) = flip runDeclare mempty $ declareNamedSchemaViaCodec @Business Proxy
-    B.putStrLn $ encodePretty s
+    --let (_, (NamedSchema _ s)) = flip runDeclare mempty $ declareNamedSchemaViaCodec @Business Proxy
+    --B.putStrLn $ encodePretty s
+    let b = Business (BoundedString "My Business") "123 Main St" 1000000
+    B.putStrLn $ encodePretty $ toJSONViaExt toJSONExt businessCodec b

@@ -1546,7 +1546,7 @@ boolCodec = BoolCodec noExtField Nothing
 -- This is a forward-compatible version of 'StringCodec' without a name.
 --
 -- > textCodec = StringCodec noExtField Nothing
-textCodec :: JSONCodec Text
+textCodec :: (XStringCodec phase ~ NoExtField) => ValueCodecAt phase Text Text
 textCodec = StringCodec noExtField Nothing
 
 -- | Codec for 'String' values
@@ -1569,7 +1569,7 @@ textCodec = StringCodec noExtField Nothing
 -- ==== API Note
 --
 -- This is a 'String' version of 'textCodec'.
-stringCodec :: JSONCodec String
+stringCodec :: (XBimapCodec phase ~ NoExtField, XStringCodec phase ~ NoExtField) => ValueCodecAt phase String String
 stringCodec = dimapCodec T.unpack T.pack textCodec
 
 -- | Codec for 'Scientific' values
@@ -1738,7 +1738,7 @@ integerWithBoundsCodec bounds = IntegerCodec noExtField Nothing bounds
 -- This is a forward-compatible version 'ObjectOfCodec' with a name.
 --
 -- > object name = ObjectOfCodec noExtField (Just name)
-object :: Text -> ObjectCodec input output -> ValueCodec input output
+object :: (XObjectOfCodec phase ~ NoExtField) => Text -> ObjectCodecAt phase input output -> ValueCodecAt phase input output
 object name = ObjectOfCodec noExtField (Just name)
 
 -- | A codec for bounded integers like 'Int', 'Int8', and 'Word'.

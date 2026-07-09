@@ -50,6 +50,7 @@ executable:
   - autodocodec-openapi3
   - bytestring
   - openapi3
+  - text
 
 tests:
   autodocodec-api-usage-test:
