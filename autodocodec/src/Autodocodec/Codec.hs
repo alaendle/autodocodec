@@ -665,12 +665,13 @@ showCodecABit = ($ "") . (`evalState` S.empty) . go 0
 -- >>> JSON.parseMaybe (parseJSONVia (rmapCodec (*2) codec)) (Number 5) :: Maybe Int
 -- Just 10
 rmapCodec ::
+  (XBimapCodec phase ~ NoExtField) =>
   (oldOutput -> newOutput) ->
-  Codec Vanilla context input oldOutput ->
-  Codec Vanilla context input newOutput
+  Codec phase context input oldOutput ->
+  Codec phase context input newOutput
 rmapCodec f = dimapCodec f id
 
-instance Functor (Codec Vanilla context input) where
+instance (XBimapCodec phase ~ NoExtField) => Functor (Codec phase context input) where
   fmap = rmapCodec
 
 -- | Map the input part of a codec
@@ -683,9 +684,10 @@ instance Functor (Codec Vanilla context input) where
 -- >>> toJSONVia (lmapCodec (*2) (codec :: JSONCodec Int)) 5
 -- Number 10.0
 lmapCodec ::
+  (XBimapCodec phase ~ NoExtField) =>
   (newInput -> oldInput) ->
-  Codec Vanilla context oldInput output ->
-  Codec Vanilla context newInput output
+  Codec phase context oldInput output ->
+  Codec phase context newInput output
 lmapCodec g = dimapCodec id g
 
 -- | Infix version of 'lmapCodec'
@@ -706,7 +708,7 @@ lmapCodec g = dimapCodec id g
 -- >       Example
 -- >         <$> requiredField "text" .= exampleText
 -- >         <*> requiredField "bool" .= exampleBool
-(.=) :: ObjectCodec oldInput output -> (newInput -> oldInput) -> ObjectCodec newInput output
+(.=) :: (XBimapCodec phase ~ NoExtField) => ObjectCodecAt phase oldInput output -> (newInput -> oldInput) -> ObjectCodecAt phase newInput output
 (.=) = flip lmapCodec
 
 -- | Map both directions of a codec
@@ -722,13 +724,14 @@ lmapCodec g = dimapCodec id g
 -- > instance HasCodec MyInt where
 -- >   codec = dimapCodec MyInt unMyInt codec
 dimapCodec ::
+  (XBimapCodec phase ~ NoExtField) =>
   -- | Function to make __to__ the new type
   (oldOutput -> newOutput) ->
   -- | Function to make __from__ the new type
   (newInput -> oldInput) ->
   -- | Codec for the old type
-  Codec Vanilla context oldInput oldOutput ->
-  Codec Vanilla context newInput newOutput
+  Codec phase context oldInput oldOutput ->
+  Codec phase context newInput newOutput
 dimapCodec f g = bimapCodec (Right . f) g
 
 -- | Produce a value without parsing any part of an 'Object'.
@@ -741,7 +744,7 @@ dimapCodec f g = bimapCodec (Right . f) g
 -- This is a forward-compatible version of 'PureCodec'.
 --
 -- > pureCodec = PureCodec noExtField
-pureCodec :: output -> ObjectCodec input output
+pureCodec :: (XPureCodec phase ~ NoExtField) => output -> ObjectCodecAt phase input output
 pureCodec = PureCodec noExtField
 
 -- | Sequentially apply two codecs that parse part of an 'Object'.
@@ -754,10 +757,10 @@ pureCodec = PureCodec noExtField
 -- This is a forward-compatible version of 'ApCodec'.
 --
 -- > apCodec = ApCodec noExtField
-apCodec :: ObjectCodec input (output -> newOutput) -> ObjectCodec input output -> ObjectCodec input newOutput
+apCodec :: (XApCodec phase ~ NoExtField) => ObjectCodecAt phase input (output -> newOutput) -> ObjectCodecAt phase input output -> ObjectCodecAt phase input newOutput
 apCodec = ApCodec noExtField
 
-instance Applicative (ObjectCodec input) where
+instance (XApCodec phase ~ NoExtField, XPureCodec phase ~ NoExtField, XBimapCodec phase ~ NoExtField) => Applicative (ObjectCodecAt phase input) where
   pure = pureCodec
   (<*>) = apCodec
 
@@ -1041,10 +1044,11 @@ discriminatedUnionCodec = DiscriminatedUnionCodec noExtField
 -- logLevelCodec :: JSONCodec LogLevel
 -- logLevelCodec = bimapCodec parseLogLevel renderLogLevel codec <?> "Valid values include DEBUG, INFO, WARNING, ERROR."
 bimapCodec ::
+  (XBimapCodec phase ~ NoExtField) =>
   (oldOutput -> Either String newOutput) ->
   (newInput -> oldInput) ->
-  Codec Vanilla context oldInput oldOutput ->
-  Codec Vanilla context newInput newOutput
+  Codec phase context oldInput oldOutput ->
+  Codec phase context newInput newOutput
 bimapCodec f g =
   -- We distinguish between a 'BimapCodec' and a non-'BimapCodec' just so that
   -- we don't introduce additional layers that we can already combine anyway.
@@ -1205,13 +1209,14 @@ singleOrNonEmptyCodec c = dimapCodec f g $ eitherCodec c $ nonEmptyCodec c
 --
 -- During encoding, the field will always be in the object.
 requiredFieldWith ::
+  (XRequiredKeyCodec phase ~ NoExtField) =>
   -- | Key
   Text ->
   -- | Codec for the value
-  ValueCodec input output ->
+  ValueCodecAt phase input output ->
   -- | Documentation
   Text ->
-  ObjectCodec input output
+  ObjectCodecAt phase input output
 requiredFieldWith key c doc = RequiredKeyCodec noExtField key c (Just doc)
 
 -- | Like 'requiredFieldWith', but without documentation.
@@ -1622,7 +1627,7 @@ scientificCodec = NumberCodec noExtField Nothing emptyBounds
 -- > scientificCodec = IntegerCodec Nothing Nothing
 --
 -- For a codec without this protection, see 'unsafeUnboundedIntegerCodec'.
-integerCodec :: JSONCodec Integer
+integerCodec :: (XIntegerCodec phase ~ NoExtField) => ValueCodecAt phase Integer Integer
 integerCodec = IntegerCodec noExtField Nothing emptyBounds
 
 -- | A codec for 'Natural' values.
