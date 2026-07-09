@@ -56,6 +56,7 @@ data MyExt  -- tree index
 type instance XXValCodec MyExt = BoundedStringCodec
 type instance XVal MyExt = String
 
+type instance XXObjCodec MyExt = NoExtCon
 type instance XObj MyExt = Void
 
 type instance XObjectOfCodec MyExt = NoExtField
@@ -79,7 +80,7 @@ type instance XStringCodec MyExt = NoExtField
 type instance XBoolCodec MyExt = NoExtField
 type instance XNullCodec MyExt = NoExtField
 
-data BoundedStringCodec = BoundedStringCodec Nat Nat
+data BoundedStringCodec = BoundedStringCodec Nat Nat deriving stock (Show, Eq)
 
 boundedStringCodec :: Nat -> Nat -> JSONCodecAt MyExt (BoundedString lo hi)
 boundedStringCodec lo hi = XValCodec $ BoundedStringCodec lo hi
@@ -97,3 +98,4 @@ main = do
     --B.putStrLn $ encodePretty s
     let b = Business (BoundedString "My Business") "123 Main St" 1000000
     B.putStrLn $ encodePretty $ toJSONViaExt toJSONExt businessCodec b
+    print $ showCodecABitAt show noExtCon businessCodec

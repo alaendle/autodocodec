@@ -618,9 +618,16 @@ type JSONObjectCodec a = ObjectCodec a a
 -- This function exists for codec debugging.
 -- It omits any unshowable information from the output.
 showCodecABit :: Codec Vanilla context input output -> String
-showCodecABit = ($ "") . (`evalState` S.empty) . go 0
+showCodecABit = showCodecABitAt noExtCon noExtCon
+
+-- | Show a codec to a human.
+--
+-- This function exists for codec debugging.
+-- It omits any unshowable information from the output.
+showCodecABitAt :: forall phase. forall context input output. (XXValCodec phase -> String) -> (XXObjCodec phase -> String) -> Codec phase context input output -> String
+showCodecABitAt extValCodec extObjCodec = ($ "") . (`evalState` S.empty) . go 0
   where
-    go :: Int -> Codec Vanilla context input output -> State (Set Text) ShowS
+    go :: Int -> Codec phase context input output -> State (Set Text) ShowS
     go d = \case
       NullCodec _ -> pure $ showString "NullCodec"
       BoolCodec _ mName -> pure $ showParen (d > 10) $ showString "BoolCodec " . showsPrec 11 mName
@@ -654,6 +661,8 @@ showCodecABit = ($ "") . (`evalState` S.empty) . go 0
       OptionalKeyWithOmittedDefaultCodec _ k c _ mdoc -> (\s -> showParen (d > 10) $ showString "OptionalKeyWithOmittedDefaultCodec " . showsPrec 11 k . showString " " . s . showString " _ " . showsPrec 11 mdoc) <$> go 11 c
       PureCodec _ _ -> pure $ showString "PureCodec _"
       ApCodec _ oc1 oc2 -> (\s1 s2 -> showParen (d > 10) $ showString "ApCodec " . s1 . showString " " . s2) <$> go 11 oc1 <*> go 11 oc2
+      XValCodec c -> pure . (showParen (d > 10) . showString) $ extValCodec c
+      XObjCodec c -> pure . (showParen (d > 10) . showString) $ extObjCodec c
 
 -- | Map the output part of a codec
 --
