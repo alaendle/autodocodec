@@ -1,4 +1,4 @@
-{ mkDerivation, aeson, autodocodec, autodocodec-exact
+{ mkDerivation, aeson, aeson-pretty, autodocodec, autodocodec-exact
 , autodocodec-nix, autodocodec-openapi3, autodocodec-schema
 , autodocodec-servant-multipart, autodocodec-swagger2
 , autodocodec-yaml, base, bytestring, containers, criterion
@@ -15,6 +15,8 @@ mkDerivation {
   pname = "autodocodec-api-usage";
   version = "0.0.0.0";
   src = ./.;
+  isLibrary = true;
+  isExecutable = true;
   libraryHaskellDepends = [
     aeson autodocodec autodocodec-openapi3 autodocodec-schema
     autodocodec-servant-multipart autodocodec-swagger2 autodocodec-yaml
@@ -22,6 +24,10 @@ mkDerivation {
     genvalidity-scientific genvalidity-text openapi3 QuickCheck
     scientific servant-multipart servant-multipart-api swagger2 text
     unordered-containers yaml
+  ];
+  executableHaskellDepends = [
+    aeson aeson-pretty autodocodec autodocodec-openapi3 base bytestring
+    openapi3 text
   ];
   testHaskellDepends = [
     aeson autodocodec autodocodec-exact autodocodec-nix
@@ -44,4 +50,5 @@ mkDerivation {
   homepage = "https://github.com/NorfairKing/autodocodec#readme";
   description = "Autodocodec api usage tests";
   license = lib.licenses.mit;
+  mainProgram = "autodocodec-api-usage";
 }

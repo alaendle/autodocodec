@@ -18,6 +18,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 -- Because Eq is a superclass of Hashable in newer versions.
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
 
