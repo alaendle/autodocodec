@@ -15,10 +15,11 @@ import           Autodocodec.OpenAPI
 import           Data.Aeson                 hiding (object, (.=))
 import           Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy.Char8 as B
+import           Data.Data
 import           Data.OpenApi
 import           Data.OpenApi.Declare       (runDeclare)
 import           Data.Void                  (Void)
-import           GHC.TypeNats               (Nat)
+import           GHC.TypeNats               (KnownNat, Nat, natVal)
 
 -- case study, what is needed to extend autodocodec with TtG
 
@@ -39,7 +40,7 @@ toJSONExt =
 
 data Business
   = Business
-  { businessName    :: BoundedString 1 100
+  { businessName    :: BoundedString 10 100
   , businessAddress :: String
   , businessRevenue :: Integer
   } deriving stock (Show, Eq)
@@ -85,13 +86,18 @@ type instance XNullCodec MyExt = NoExtField
 
 data BoundedStringCodec = BoundedStringCodec Nat Nat deriving stock (Show, Eq)
 
-boundedStringCodec :: Nat -> Nat -> JSONCodecAt MyExt (BoundedString lo hi)
-boundedStringCodec lo hi = XValCodec $ BoundedStringCodec lo hi
+boundedStringCodec :: forall lo hi. (KnownNat lo, KnownNat hi) => JSONCodecAt MyExt (BoundedString lo hi)
+boundedStringCodec = boundedStringCodec' Proxy Proxy
+
+boundedStringCodec'
+  :: forall lo hi. (KnownNat lo, KnownNat hi)
+  => Proxy lo -> Proxy hi -> JSONCodecAt MyExt (BoundedString lo hi)
+boundedStringCodec' pl ph = XValCodec $ BoundedStringCodec (natVal pl) (natVal ph)
 
 businessCodec :: JSONCodecAt MyExt Business
 businessCodec = object "Business" $
   Business
-    <$> requiredFieldWith "name" (boundedStringCodec 2 100) "The name of the business" .= businessName
+    <$> requiredFieldWith "name" boundedStringCodec "The name of the business" .= businessName
     <*> requiredFieldWith "address" stringCodec "The address of the business" .= businessAddress
     <*> requiredFieldWith "revenue" integerCodec "The revenue of the business" .= businessRevenue
 
