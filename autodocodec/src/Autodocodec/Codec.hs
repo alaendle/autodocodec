@@ -1106,15 +1106,16 @@ optionalKeyCodec :: Text -> ValueCodec input output -> Maybe Text -> ObjectCodec
 optionalKeyCodec = OptionalKeyCodec noExtField
 
 optionalKeyWithDefaultCodec ::
+  (XOptionalKeyWithDefaultCodec phase ~ NoExtField) =>
   -- | Key
   Text ->
   -- | Codec for the value
-  ValueCodec value value ->
+  ValueCodecAt phase value value ->
   -- | Default value
   value ->
   -- | Documentation
   Maybe Text ->
-  ObjectCodec value value
+  ObjectCodecAt phase value value
 optionalKeyWithDefaultCodec = OptionalKeyWithDefaultCodec noExtField
 
 -- | Build a codec for nonempty lists of values from a codec for a single value.
@@ -1230,11 +1231,12 @@ requiredFieldWith key c doc = RequiredKeyCodec noExtField key c (Just doc)
 
 -- | Like 'requiredFieldWith', but without documentation.
 requiredFieldWith' ::
+  (XRequiredKeyCodec phase ~ NoExtField) =>
   -- | Key
   Text ->
   -- | Codec for the value
-  ValueCodec input output ->
-  ObjectCodec input output
+  ValueCodecAt phase input output ->
+  ObjectCodecAt phase input output
 requiredFieldWith' key c = RequiredKeyCodec noExtField key c Nothing
 
 -- | An optional field
@@ -1807,7 +1809,7 @@ unsafeUnboundedNaturalCodec =
 -- Just "hello"
 -- >>> JSON.parseMaybe (parseJSONVia c) (String "world")
 -- Nothing
-literalTextCodec :: Text -> JSONCodec Text
+literalTextCodec :: (XEqCodec phase ~ NoExtField, XStringCodec phase ~ NoExtField) => Text -> JSONCodecAt phase Text
 literalTextCodec text = EqCodec noExtField text textCodec
 
 -- | A codec for a literal value corresponding to a literal piece of 'Text'.

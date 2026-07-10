@@ -32,9 +32,12 @@ declareNamedSchemaViaCodec proxy = declareNamedSchemaVia codec proxy
 
 -- | Use a given 'codec' to implement 'declareNamedSchema'.
 declareNamedSchemaVia :: JSONCodec value -> Proxy value -> Declare (Definitions Schema) NamedSchema
-declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
+declareNamedSchemaVia c Proxy = declareNamedSchemaViaAt c (ToJSONExt (const noExtCon) (const noExtCon)) noExtCon noExtCon
+
+declareNamedSchemaViaAt :: forall phase. forall value. (XOptionalKeyWithDefaultCodec phase ~ NoExtField, XPureCodec phase ~ NoExtField, XStringCodec phase ~ NoExtField, XBimapCodec phase ~ NoExtField, XEqCodec phase ~ NoExtField, XRequiredKeyCodec phase ~ NoExtField, XApCodec phase ~ NoExtField) => JSONCodecAt phase value -> ToJSONExt phase -> (XXValCodec phase -> Declare (Definitions Schema) NamedSchema) -> (XXObjCodec phase -> Declare (Definitions Schema) [Schema]) -> Declare (Definitions Schema) NamedSchema
+declareNamedSchemaViaAt c' jsonExt extValCodecSchema extObjCodecSchema = evalStateT (go c') mempty
   where
-    go :: ValueCodec input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) NamedSchema
+    go :: ValueCodecAt phase input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) NamedSchema
     go = \case
       NullCodec _ ->
         pure $
@@ -97,7 +100,7 @@ declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
       EqCodec _ val valCodec ->
         pure $
           NamedSchema Nothing $
-            let jsonVal = toJSONVia valCodec val
+            let jsonVal = toJSONViaExt jsonExt valCodec val
              in mempty
                   { _schemaEnum = Just [jsonVal],
                     _schemaType = Just $ case jsonVal of
@@ -113,7 +116,7 @@ declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
         ss <- goObject oc
         pure $ NamedSchema mname $ combineObjectSchemas ss
       EitherCodec _ u c1 c2 ->
-        let orNull :: forall input output. ValueCodec input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) NamedSchema
+        let orNull :: ValueCodecAt phase input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) NamedSchema
             orNull c = do
               ns <- go c
               pure $ ns & schema . nullable ?~ True
@@ -148,8 +151,9 @@ declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
           Just s ->
             -- We've been here before recursively, just reuse the schema we've previously created
             pure $ NamedSchema (Just n) s
+      XValCodec c -> lift $ extValCodecSchema c
 
-    goObject :: ObjectCodec input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) [Schema]
+    goObject :: ObjectCodecAt phase input output -> StateT (HashMap Text Schema) (Declare (Definitions Schema)) [Schema]
     goObject = \case
       RequiredKeyCodec _ key vs mDoc -> do
         ns <- go vs
@@ -173,7 +177,7 @@ declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
       OptionalKeyWithDefaultCodec _ key vs defaultValue mDoc -> do
         ns <- go vs
         ref <- declareSpecificNamedSchemaRef ns
-        let addDefaultToSchema propertySchema = propertySchema {_schemaDefault = Just $ toJSONVia vs defaultValue}
+        let addDefaultToSchema propertySchema = propertySchema {_schemaDefault = Just $ toJSONViaExt jsonExt vs defaultValue}
         pure
           [ mempty
               { _schemaProperties = [(key, addDefaultToSchema . addMDoc mDoc . _namedSchemaSchema <$> ref)],
@@ -211,6 +215,7 @@ declareNamedSchemaVia c' Proxy = evalStateT (go c') mempty
         ss2 <- goObject oc2
         pure $ ss1 ++ ss2
       BimapCodec _ _ _ oc -> goObject oc
+      XObjCodec c -> lift $ extObjCodecSchema c
 
     addMDoc :: Maybe Text -> Schema -> Schema
     addMDoc = maybe id addDoc

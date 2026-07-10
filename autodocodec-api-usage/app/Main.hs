@@ -11,9 +11,12 @@
 module Main where
 
 import           Autodocodec
+import           Autodocodec.OpenAPI
 import           Data.Aeson                 hiding (object, (.=))
 import           Data.Aeson.Encode.Pretty
 import qualified Data.ByteString.Lazy.Char8 as B
+import           Data.OpenApi
+import           Data.OpenApi.Declare       (runDeclare)
 import           Data.Void                  (Void)
 import           GHC.TypeNats               (Nat)
 
@@ -88,7 +91,7 @@ boundedStringCodec lo hi = XValCodec $ BoundedStringCodec lo hi
 businessCodec :: JSONCodecAt MyExt Business
 businessCodec = object "Business" $
   Business
-    <$> requiredFieldWith "name" (boundedStringCodec 1 100) "The name of the business" .= businessName
+    <$> requiredFieldWith "name" (boundedStringCodec 2 100) "The name of the business" .= businessName
     <*> requiredFieldWith "address" stringCodec "The address of the business" .= businessAddress
     <*> requiredFieldWith "revenue" integerCodec "The revenue of the business" .= businessRevenue
 
@@ -99,3 +102,6 @@ main = do
     let b = Business (BoundedString "My Business") "123 Main St" 1000000
     B.putStrLn $ encodePretty $ toJSONViaExt toJSONExt businessCodec b
     print $ showCodecABitAt show noExtCon businessCodec
+
+    let (_, (NamedSchema _ s)) = flip runDeclare mempty $ declareNamedSchemaViaAt businessCodec toJSONExt (\(BoundedStringCodec lo hi) -> pure $ NamedSchema Nothing (mempty { _schemaMinLength = Just (fromIntegral lo), _schemaMaxLength = Just (fromIntegral hi) })) (noExtCon)
+    B.putStrLn $ encodePretty s
