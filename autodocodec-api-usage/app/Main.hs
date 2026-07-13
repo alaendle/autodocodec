@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Main where
@@ -11,11 +13,13 @@ import Autodocodec
 import Autodocodec.OpenAPI
 import Data.Aeson hiding (object, (.=))
 import Data.Aeson.Encode.Pretty
+import Data.Aeson.KeyMap (singleton)
 import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Data
 import Data.OpenApi
 import Data.OpenApi.Declare (runDeclare)
-import Data.Void (Void)
+import Data.Text (pack)
+import GHC.Generics
 import GHC.TypeNats (KnownNat, Nat, natVal)
 
 -- case study, what is needed to extend autodocodec with TtG
@@ -33,12 +37,21 @@ toJSONExt :: ToJSONExt MyExt
 toJSONExt =
   ToJSONExt
     (\_ t -> toJSON ("Bounded: " <> t))
-    (\_ t -> case t of {})
+    (\_ t -> case t of Address s z -> singleton "address" (String $ pack $ s <> "-" <> z))
+
+data Address
+  = Address
+  { -- addressStreet :: String,
+    addressCity :: String,
+    addressZipCode :: String
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (ToSchema)
 
 data Business
   = Business
   { businessName :: BoundedString 10 100,
-    businessAddress :: String,
+    businessAddress :: Address,
     businessRevenue :: Integer
   }
   deriving stock (Show, Eq)
@@ -60,9 +73,9 @@ type instance XXValCodec MyExt = BoundedStringCodec
 
 type instance XVal MyExt = String
 
-type instance XXObjCodec MyExt = NoExtCon
+type instance XXObjCodec MyExt = AddressCodec
 
-type instance XObj MyExt = Void
+type instance XObj MyExt = Address
 
 type instance XObjectOfCodec MyExt = NoExtField
 
@@ -106,27 +119,32 @@ type instance XNullCodec MyExt = NoExtField
 
 data BoundedStringCodec = BoundedStringCodec Nat Nat deriving stock (Show, Eq)
 
+data AddressCodec = AddressCodec Schema deriving stock (Show, Eq)
+
 boundedStringCodec :: (KnownNat lo, KnownNat hi) => JSONCodecAt MyExt (BoundedString lo hi)
 boundedStringCodec = boundedStringCodec' Proxy Proxy
 
 boundedStringCodec' :: (KnownNat lo, KnownNat hi) => Proxy lo -> Proxy hi -> JSONCodecAt MyExt (BoundedString lo hi)
 boundedStringCodec' pl ph = XValCodec $ BoundedStringCodec (natVal pl) (natVal ph)
 
+addressCodec :: ObjectCodecAt MyExt Address Address
+addressCodec = XObjCodec $ AddressCodec $ toSchema (Proxy @Address)
+
 businessCodec :: JSONCodecAt MyExt Business
 businessCodec =
   object "Business" $
     Business
       <$> requiredFieldWith "name" boundedStringCodec "The name of the business" .= businessName
-      <*> requiredFieldWith "address" stringCodec "The address of the business" .= businessAddress
+      <*> lmapCodec businessAddress addressCodec -- requiredFieldWith "address" addressCodec "The address of the business" .= businessAddress
       <*> requiredFieldWith "revenue" integerCodec "The revenue of the business" .= businessRevenue
 
 main :: IO ()
 main = do
   -- let (_, (NamedSchema _ s)) = flip runDeclare mempty $ declareNamedSchemaViaCodec @Business Proxy
   -- B.putStrLn $ encodePretty s
-  let b = Business (BoundedString "My Business") "123 Main St" 1000000
+  let b = Business (BoundedString "My Business") (Address "Anytown" "12345") 1000000
   B.putStrLn $ encodePretty $ toJSONViaExt toJSONExt businessCodec b
-  print $ showCodecABitAt show noExtCon businessCodec
+  print $ showCodecABitAt show show businessCodec
 
-  let (_, NamedSchema _ s) = flip runDeclare mempty $ declareNamedSchemaViaAt businessCodec toJSONExt (\(BoundedStringCodec lo hi) -> pure $ NamedSchema Nothing (mempty {_schemaMinLength = Just (fromIntegral lo), _schemaMaxLength = Just (fromIntegral hi)})) noExtCon
+  let (_, NamedSchema _ s) = flip runDeclare mempty $ declareNamedSchemaViaAt businessCodec toJSONExt (\(BoundedStringCodec lo hi) -> pure $ NamedSchema Nothing (mempty {_schemaMinLength = Just (fromIntegral lo), _schemaMaxLength = Just (fromIntegral hi)})) (\(AddressCodec as) -> pure . pure $ as)
   B.putStrLn $ encodePretty s
