@@ -836,9 +836,10 @@ maybeCodec =
 --
 -- > eitherCodec = possiblyJointEitherCodec
 eitherCodec ::
-  Codec Vanilla context input1 output1 ->
-  Codec Vanilla context input2 output2 ->
-  Codec Vanilla context (Either input1 input2) (Either output1 output2)
+  XEitherCodec phase ~ NoExtField =>
+  Codec phase context input1 output1 ->
+  Codec phase context input2 output2 ->
+  Codec phase context (Either input1 input2) (Either output1 output2)
 eitherCodec = possiblyJointEitherCodec
 
 -- | Possibly joint either codec
@@ -912,9 +913,10 @@ eitherCodec = possiblyJointEitherCodec
 --
 -- > disjointEitherCodec = EitherCodec noExtField DisjointUnion
 disjointEitherCodec ::
-  Codec Vanilla context input1 output1 ->
-  Codec Vanilla context input2 output2 ->
-  Codec Vanilla context (Either input1 input2) (Either output1 output2)
+  XEitherCodec phase ~ NoExtField =>
+  Codec phase context input1 output1 ->
+  Codec phase context input2 output2 ->
+  Codec phase context (Either input1 input2) (Either output1 output2)
 disjointEitherCodec = EitherCodec noExtField DisjointUnion
 
 -- | Possibly joint either codec
@@ -981,9 +983,10 @@ disjointEitherCodec = EitherCodec noExtField DisjointUnion
 --
 -- > possiblyJointEitherCodec = EitherCodec noExtField PossiblyJointUnion
 possiblyJointEitherCodec ::
-  Codec Vanilla context input1 output1 ->
-  Codec Vanilla context input2 output2 ->
-  Codec Vanilla context (Either input1 input2) (Either output1 output2)
+  XEitherCodec phase ~ NoExtField =>
+  Codec phase context input1 output1 ->
+  Codec phase context input2 output2 ->
+  Codec phase context (Either input1 input2) (Either output1 output2)
 possiblyJointEitherCodec = EitherCodec noExtField PossiblyJointUnion
 
 -- | Discriminator value used in 'DiscriminatedUnionCodec'
@@ -1082,7 +1085,7 @@ bimapCodec f g =
 -- This is a forward-compatible version of 'ArrayOfCodec' without a name.
 --
 -- > vectorCodec = ArrayOfCodec noExtField Nothing
-vectorCodec :: ValueCodec input output -> ValueCodec (Vector input) (Vector output)
+vectorCodec :: XArrayOfCodec phase ~ NoExtField => ValueCodecAt phase input output -> ValueCodecAt phase (Vector input) (Vector output)
 vectorCodec = ArrayOfCodec noExtField Nothing
 
 -- | List codec
@@ -1099,7 +1102,7 @@ vectorCodec = ArrayOfCodec noExtField Nothing
 -- ==== API Note
 --
 -- This is the list version of 'vectorCodec'.
-listCodec :: ValueCodec input output -> ValueCodec [input] [output]
+listCodec :: (XBimapCodec phase ~ NoExtField, XArrayOfCodec phase ~ NoExtField) => ValueCodecAt phase input output -> ValueCodecAt phase [input] [output]
 listCodec = dimapCodec V.toList V.fromList . vectorCodec
 
 -- Some restricted constructors
