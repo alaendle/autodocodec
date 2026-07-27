@@ -54,6 +54,7 @@ spec = do
   jsonSchemaSpec @Text "text"
   jsonSchemaSpec @LT.Text "lazy-text"
   jsonSchemaSpec @String "string"
+  jsonSchemaSpec @StringWithBounds "string-with-bounds"
   jsonSchemaSpec @Scientific "scientific"
   jsonSchemaSpec @JSON.Object "object"
   jsonSchemaSpec @JSON.Value "value"

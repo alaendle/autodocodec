@@ -22,7 +22,7 @@ import Data.Dynamic (fromDynamic, toDyn)
 import qualified Data.Foldable as Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import qualified Data.HashMap.Strict.InsOrd as InsOrdHashMap
+import qualified Data.HashMap.Strict.InsOrd.Compat as InsOrdHashMap
 import qualified Data.Map as Map
 import Data.OpenApi as OpenAPI
 import Data.OpenApi.Declare as OpenAPI

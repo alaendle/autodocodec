@@ -4,7 +4,7 @@
 }:
 mkDerivation {
   pname = "autodocodec-openapi3";
-  version = "0.3.0.1";
+  version = "0.3.0.2";
   src = ./.;
   libraryHaskellDepends = [
     aeson autodocodec base containers insert-ordered-containers lens
